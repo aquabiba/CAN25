@@ -2,7 +2,10 @@ package com.can25.Batch;
 
 import com.can25.Entity.SeatLocation;
 import com.can25.Entity.Spectator;
+import com.can25.Entity.SpectatorDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -31,32 +34,53 @@ import java.util.Map;
 @Configuration
 public class BatchConfig {
 
-    @Bean
-    public JsonItemReader<Spectator> jsonItemReader() {
-        ObjectMapper objectMapper = new ObjectMapper();
+//    @Bean
+//    public JsonItemReader<SpectatorDTO> jsonItemReader() {
+//        ObjectMapper objectMapper = new ObjectMapper();
+//
+//        JacksonJsonObjectReader<SpectatorDTO> jsonObjectReader =
+//                new JacksonJsonObjectReader<>(SpectatorDTO.class);
+//        jsonObjectReader.setMapper(objectMapper);
+//
+//        return new JsonItemReaderBuilder<SpectatorDTO>()
+//                .name("jsonSpectatorReader")
+//                .jsonObjectReader(jsonObjectReader)
+//                .resource(new ClassPathResource("spectators_json.json"))
+//                .strict(false)
+//                .build();
+//    }
 
-        JacksonJsonObjectReader<Spectator> jsonObjectReader =
-                new JacksonJsonObjectReader<>(Spectator.class);
+    @Bean
+    public JsonItemReader<SpectatorDTO> jsonItemReader() {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        JacksonJsonObjectReader<SpectatorDTO> jsonObjectReader =
+                new JacksonJsonObjectReader<>(SpectatorDTO.class);
         jsonObjectReader.setMapper(objectMapper);
 
-        return new JsonItemReaderBuilder<Spectator>()
+        return new JsonItemReaderBuilder<SpectatorDTO>()
                 .name("jsonSpectatorReader")
                 .jsonObjectReader(jsonObjectReader)
                 .resource(new ClassPathResource("spectators_json.json"))
                 .strict(false)
                 .build();
     }
+
+
     @Bean
-    public StaxEventItemReader<Spectator> xmlItemReader() {
+    public StaxEventItemReader<SpectatorDTO> xmlItemReader() {
 
         Map<String, Class<?>> aliases = new HashMap<>();
-        aliases.put("Spectator", Spectator.class);
+        aliases.put("Spectator", SpectatorDTO.class);
         aliases.put("seatLocation", SeatLocation.class);
 
         XStreamMarshaller marshaller = new XStreamMarshaller();
         marshaller.setAliases(aliases);
 
-        return new StaxEventItemReaderBuilder<Spectator>()
+        return new StaxEventItemReaderBuilder<SpectatorDTO>()
                 .name("xmlSpectatorReader")
                 .resource(new FileSystemResource("spectators_xml.xml"))
                 .addFragmentRootElements("Spectator")
@@ -69,12 +93,12 @@ public class BatchConfig {
     public Step spectatorStep(
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
-            @Qualifier("jsonItemReader") ItemReader<Spectator> reader,
-            ItemProcessor<Spectator, Spectator> processor,
+            @Qualifier("jsonItemReader") ItemReader<SpectatorDTO> reader,
+            ItemProcessor<SpectatorDTO, Spectator> processor,
             DatabaseWriter writer) {  // ✅ Injection directe de DatabaseWriter
 
         return new StepBuilder("spectatorStep", jobRepository)
-                .<Spectator, Spectator>chunk(10, transactionManager)
+                .<SpectatorDTO, Spectator>chunk(10, transactionManager)
                 .reader(reader)
                 .processor(processor)
                 .writer(writer)  // ✅ writer est DatabaseWriter

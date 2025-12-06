@@ -1,15 +1,21 @@
 package com.can25.Entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class MatchEntry {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;  // clé primaire interne unique
 
     private String matchId;
@@ -19,6 +25,6 @@ public class MatchEntry {
     private String ticketNumber;
     private String ticketType;
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "location_id")
+    //@JoinColumn(name = "location_id")
     private SeatLocation seatLocation;
 }

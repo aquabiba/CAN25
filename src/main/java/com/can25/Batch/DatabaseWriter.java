@@ -24,18 +24,19 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
 
         for (Spectator spectator : chunk) {
 
-            // ----- 1. VÉRIFICATION ET MISE À JOUR DU SPECTATEUR -----
+            // ----- 1. VERIFICATION ET MISE A JOUR DU SPECTATEUR -----
             // Vérifier si le spectateur existe déjà
             Spectator existingSpectator = em.find(Spectator.class, spectator.getSpectatorId());
 
             if (existingSpectator == null) {
                 // Nouveau spectateur : on le persiste
-                Spectator newSpectator = new Spectator();
-                newSpectator.setSpectatorId(spectator.getSpectatorId());
-                newSpectator.setAge(spectator.getAge());
-                newSpectator.setNationality(spectator.getNationality());
-                newSpectator.setTotalMatches(spectator.getTotalMatches());
-                newSpectator.setCategory(spectator.getCategory());
+                Spectator newSpectator = Spectator.builder()
+                        .spectatorId(spectator.getSpectatorId())
+                        .age(spectator.getAge())
+                        .nationality(spectator.getNationality())
+                        .totalMatches(spectator.getTotalMatches())
+                        .category(spectator.getCategory())
+                        .build();
 
                 em.persist(newSpectator);
             } else {
@@ -46,22 +47,23 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
                 em.merge(existingSpectator);
             }
 
-            // ----- 2. CRÉATION DE L'ENTRÉE AU MATCH -----
-            MatchEntry entry = new MatchEntry();
-            entry.setSpectatorId(spectator.getSpectatorId());
-            entry.setMatchId(spectator.getMatchId());  // Depuis les champs @Transient
-            entry.setEntryTime(LocalDateTime.parse(spectator.getEntryTime()));
-            entry.setGate(spectator.getGate());
-            entry.setTicketNumber(spectator.getTicketNumber());
-            entry.setTicketType(spectator.getTicketType());
-            entry.setSeatLocation(spectator.getSeatLocation());
+            // ----- 2. CREATION DE L'ENTREE AU MATCH -----
+            MatchEntry entry = MatchEntry.builder()
+                    .spectatorId(spectator.getSpectatorId())
+                    .matchId(spectator.getMatchId())  // Depuis les champs @Transient
+                    .entryTime(LocalDateTime.parse(spectator.getEntryTime()))
+                    .gate(spectator.getGate())
+                    .ticketNumber(spectator.getTicketNumber())
+                    .ticketType(spectator.getTicketType())
+                    .seatLocation(spectator.getSeatLocation())
+                    .build();
 
             em.persist(entry);
 
-            // ----- 3. MISE À JOUR DES STATISTIQUES -----
+            // ----- 3. MISE A JOUR DES STATISTIQUES -----
             // Vérifier si des stats existent pour ce spectateur
             SpectatorStatistics stats = em.createQuery(
-                            "SELECT s FROM SpectatorStatistics s WHERE s.spectatorId = :spectatorId",
+                            "SELECT s FROM SpectatorStatistics s WHERE s.spectatorId.spectatorId = :spectatorId",
                             SpectatorStatistics.class)
                     .setParameter("spectatorId", spectator.getSpectatorId())
                     .getResultStream()
@@ -70,10 +72,11 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
 
             if (stats == null) {
                 // Créer de nouvelles statistiques
-                stats = new SpectatorStatistics();
-                stats.setSpectatorId(spectator.getSpectatorId());
-                stats.setTotalMatches(spectator.getTotalMatches());
-                stats.setBehaviorCategory(spectator.getCategory().name());
+                stats = SpectatorStatistics.builder()
+                        .spectatorId(existingSpectator) // A khoya azedinne ach hadchi
+                        .totalMatches(spectator.getTotalMatches())
+                        .behaviorCategory(spectator.getCategory().name())
+                        .build();
 
                 em.persist(stats);
             } else {
@@ -86,3 +89,4 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
         }
     }
 }
+

@@ -1,24 +1,25 @@
 package com.can25.Entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class SpectatorStatistics {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long statsId ;
-
-    private String spectatorId  ;
+    @ManyToOne(fetch = FetchType.EAGER)
+    private Spectator spectatorId  ;
     private String behaviorCategory  ;
     private Integer totalMatches;
 
-
-    public SpectatorStatistics() {}
 
 
 }
