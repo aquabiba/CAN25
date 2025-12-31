@@ -20,38 +20,22 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
 
     @Override
     @Transactional
-    public void write(Chunk<? extends Spectator> chunk) throws Exception {
+    public void write(Chunk<? extends Spectator> chunk) {
 
         for (Spectator spectator : chunk) {
 
-            // ----- 1. VERIFICATION ET MISE A JOUR DU SPECTATEUR -----
-            // Vérifier si le spectateur existe déjà
-            Spectator existingSpectator = em.find(Spectator.class, spectator.getSpectatorId());
-
-            if (existingSpectator == null) {
-                // Nouveau spectateur : on le persiste
-                Spectator newSpectator = Spectator.builder()
-                        .spectatorId(spectator.getSpectatorId())
-                        .age(spectator.getAge())
-                        .nationality(spectator.getNationality())
-                        .totalMatches(spectator.getTotalMatches())
-                        .category(spectator.getCategory())
-                        .build();
-
-                em.persist(newSpectator);
-            } else {
-                // Spectateur existant : on met à jour
-                existingSpectator.setTotalMatches(spectator.getTotalMatches());
-                existingSpectator.setCategory(spectator.getCategory());
-
-                em.merge(existingSpectator);
+            //  Spectator
+            Spectator persisted = em.find(Spectator.class, spectator.getSpectatorId());
+            if (persisted == null) {
+                em.persist(spectator);
+                persisted = spectator;
             }
 
-            // ----- 2. CREATION DE L'ENTREE AU MATCH -----
+            //  Match Entry (ALWAYS NEW)
             MatchEntry entry = MatchEntry.builder()
-                    .spectatorId(spectator.getSpectatorId())
-                    .matchId(spectator.getMatchId())  // Depuis les champs @Transient
-                    .entryTime(LocalDateTime.parse(spectator.getEntryTime()))
+                    .spectatorId(persisted.getSpectatorId())
+                    .matchId(spectator.getMatchId())
+                    .entryTime(parseTime(spectator.getEntryTime()))
                     .gate(spectator.getGate())
                     .ticketNumber(spectator.getTicketNumber())
                     .ticketType(spectator.getTicketType())
@@ -60,33 +44,30 @@ public class DatabaseWriter implements ItemWriter<Spectator> {
 
             em.persist(entry);
 
-            // ----- 3. MISE A JOUR DES STATISTIQUES -----
-            // Vérifier si des stats existent pour ce spectateur
+            // 3️⃣ Statistics
             SpectatorStatistics stats = em.createQuery(
-                            "SELECT s FROM SpectatorStatistics s WHERE s.spectatorId.spectatorId = :spectatorId",
+                            "SELECT s FROM SpectatorStatistics s WHERE s.spectatorId = :sp",
                             SpectatorStatistics.class)
-                    .setParameter("spectatorId", spectator.getSpectatorId())
+                    .setParameter("sp", persisted)
                     .getResultStream()
                     .findFirst()
                     .orElse(null);
 
             if (stats == null) {
-                // Créer de nouvelles statistiques
                 stats = SpectatorStatistics.builder()
-                        .spectatorId(existingSpectator) // A khoya azedinne ach hadchi
-                        .totalMatches(spectator.getTotalMatches())
-                        .behaviorCategory(spectator.getCategory().name())
+                        .spectatorId(persisted)
+                        .totalMatches(persisted.getTotalMatches())
+                        .behaviorCategory(persisted.getCategory().name())
                         .build();
-
                 em.persist(stats);
             } else {
-                // Mettre à jour les statistiques existantes
-                stats.setTotalMatches(spectator.getTotalMatches());
-                stats.setBehaviorCategory(spectator.getCategory().name());
-
-                em.merge(stats);
+                stats.setTotalMatches(persisted.getTotalMatches());
+                stats.setBehaviorCategory(persisted.getCategory().name());
             }
         }
     }
-}
 
+    private LocalDateTime parseTime(String value) {
+        return value == null ? null : LocalDateTime.parse(value);
+    }
+}
